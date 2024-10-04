@@ -80,9 +80,72 @@ const operations: Operation[] = [
     method: "DELETE",
     fields: { id: "input" },
   },
-  //
-  // ...
-  //
+  {
+    name: "Get Covers (empty for all)",
+    endpoint: "/api/covers",
+    method: "GET",
+    fields: { author: "input" },
+  },
+  {
+    name: "Create Covers",
+    endpoint: "/api/covers",
+    method: "POST",
+    fields: { post: "input", text: "input", lyrics: "input", image: "input" },
+  },
+  {
+    name: "Update Covers",
+    endpoint: "/api/covers/:id",
+    method: "PATCH",
+    fields: { id: "input", text: "input", lyrics: "input", image: "input" },
+  },
+  {
+    name: "Delete Covers",
+    endpoint: "/api/covers/:id",
+    method: "DELETE",
+    fields: { id: "input" },
+  },
+  {
+    name: "Get Snapshots (empty for all)",
+    endpoint: "/api/snapshots",
+    method: "GET",
+    fields: { author: "input" },
+  },
+  {
+    name: "Create Snapshots",
+    endpoint: "/api/snapshots",
+    method: "POST",
+    fields: { post: "input", text: "input", lyrics: "input", image: "input" },
+  },
+  {
+    name: "Update Snapshots",
+    endpoint: "/api/snapshots/:id",
+    method: "PATCH",
+    fields: { id: "input", text: "input", lyrics: "input", image: "input" },
+  },
+  {
+    name: "Delete Snapshots",
+    endpoint: "/api/snapshots/:id",
+    method: "DELETE",
+    fields: { id: "input" },
+  },
+  {
+    name: "Get Locks (empty for all)",
+    endpoint: "/api/locks",
+    method: "GET",
+    fields: { locker: "input" },
+  },
+  {
+    name: "Create Locks",
+    endpoint: "/api/locks",
+    method: "POST",
+    fields: { comment: "input", from: "input", to: "input" },
+  },
+  {
+    name: "Update Locks",
+    endpoint: "/api/locks/:id",
+    method: "PATCH",
+    fields: { id: "input" },
+  },
 ];
 
 /*

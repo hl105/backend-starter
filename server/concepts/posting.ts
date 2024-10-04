@@ -61,7 +61,16 @@ export default class PostingConcept {
       throw new PostAuthorNotMatchError(user, _id);
     }
   }
+
+  async assertPostExists(_id: ObjectId) {
+    const maybePost = await this.posts.readOne({ _id });
+    if (maybePost === null) {
+      throw new NotFoundError(`Post not found!`);
+    }
+  }
+
 }
+
 
 export class PostAuthorNotMatchError extends NotAllowedError {
   constructor(

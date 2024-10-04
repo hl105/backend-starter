@@ -2,7 +2,7 @@ import { ObjectId } from "mongodb";
 
 import { Router, getExpressRouter } from "./framework/router";
 
-import { Authing, Friending, Posting, Sessioning } from "./app";
+import { Authing, Covering, Friending, Locking, Posting, Sessioning, Snapshoting } from "./app";
 import { PostOptions } from "./concepts/posting";
 import { SessionDoc } from "./concepts/sessioning";
 import Responses from "./responses";
@@ -54,6 +54,9 @@ class Routes {
   async deleteUser(session: SessionDoc) {
     const user = Sessioning.getUser(session);
     Sessioning.end(session);
+    Covering.deleteByAuthor(user);
+    Snapshoting.deleteByAuthor(user);
+    Locking.deleteByLocker(user);
     return await Authing.delete(user);
   }
 
@@ -152,6 +155,135 @@ class Routes {
     const fromOid = (await Authing.getUserByUsername(from))._id;
     return await Friending.rejectRequest(fromOid, user);
   }
+
+  @Router.get("/covers")
+  @Router.validate(z.object({ author: z.string().optional() }))
+  async getCovers(author?: string) {
+    let covers;
+    if (author) {
+      const id = (await Authing.getUserByUsername(author))._id;
+      console.log(id);
+      covers = await Covering.getByAuthor(id);
+    } else {
+      covers = await Covering.getComments();
+    }
+    return Responses.comments(covers);
+  }
+
+  @Router.get("/snapshots")
+  @Router.validate(z.object({ author: z.string().optional() }))
+  async getSnapshots(author?: string) {
+    let snapshots;
+    if (author) {
+      const id = (await Authing.getUserByUsername(author))._id;
+      console.log(id);
+      snapshots = await Snapshoting.getByAuthor(id);
+    } else {
+      snapshots = await Snapshoting.getComments();
+    }
+    return Responses.comments(snapshots);
+  }
+
+  @Router.post("/covers")
+  async createCover(session: SessionDoc, post: string, text: string, lyrics: string, image: string) {
+    const user = Sessioning.getUser(session);
+    const postId = new ObjectId(post);
+    const created = await Covering.create(postId, user, text, lyrics, image);
+    return { msg: created.msg, post: await Responses.comment(created.comment) };
+  }
+
+  @Router.post("/snapshots")
+  async createSnapshot(session: SessionDoc, post: string, text: string, lyrics: string, image: string) {
+    const user = Sessioning.getUser(session);
+    const postId = new ObjectId(post);
+    const created = await Snapshoting.create(postId, user, text, lyrics, image);
+    return { msg: created.msg, post: await Responses.comment(created.comment) };
+  }
+
+  @Router.patch("/covers/:id")
+  async updateCover(session: SessionDoc, id: string, text?: string, lyrics?: string, image?: string) {
+    const user = Sessioning.getUser(session);
+    const oid = new ObjectId(id);
+    await Covering.assertAuthorIsUser(oid, user);
+    return await Covering.update(oid, text, lyrics, image);
+  }
+
+  // you don't update snapshots
+
+  @Router.delete("/covers/:id")
+  async deleteCover(session: SessionDoc, id: string) {
+    const user = Sessioning.getUser(session);
+    const oid = new ObjectId(id);
+    const lock = await Locking.getByContent(oid);
+    await Covering.assertAuthorIsUser(oid, user);
+    if (lock) {
+      await Locking.delete(lock._id);
+    }
+    return Covering.delete(oid);
+  }
+
+  @Router.delete("/snapshots/:id")
+  async deleteComment(session: SessionDoc, id: string) {
+    const user = Sessioning.getUser(session);
+    const oid = new ObjectId(id);
+    const expiration = await Locking.getByContent(oid);
+    await Snapshoting.assertAuthorIsUser(oid, user);
+    if (expiration) {
+      // await Expiring.delete(lock._id); NOT IMPLEMENTED
+    }
+    return Snapshoting.delete(oid);
+  }
+
+  @Router.get("/locks")
+  @Router.validate(z.object({ locker: z.string().optional() }))
+  async getLocks(locker?: string) {
+    let locks;
+    if (locker) {
+      const id = (await Authing.getUserByUsername(locker))._id;
+      locks = await Locking.getByLocker(id);
+    } else {
+      locks = await Locking.getLocks();
+    }
+    return Responses.locks(locks);
+  }
+
+  @Router.post("/locks")
+  async createLock(session: SessionDoc, comment: string, from: string, to: string) {
+    const user = Sessioning.getUser(session);
+    const commentId = new ObjectId(comment);
+    await Covering.assertAuthorIsUser(commentId, user); // lock a comment only when user made it
+    const created = await Locking.create(commentId, user, from, to);
+    return { msg: created.msg, post: await Responses.lock(created.lock) };
+  }
+
+  @Router.patch("/locks/:id")
+  /**
+   *  Locks can never be updated
+   */
+  async updateLock(id: string) {
+    return { msg: "You can't update a lock!" };
+  }
+
+  //no delete because you only delete locks when you delete comment
+  // i.e. delete is up in the comment sync
+
+  /**
+   *
+   * TO IMPLEMENT BY NEXT WEEK:
+   */
+
+  @Router.get("/expired")
+  async getExpired(session: SessionDoc) {}
+
+  @Router.get("/notExpired")
+  async getNotExpired(session: SessionDoc, id: string) {}
+
+  @Router.post("/notExpired/:contentId")
+  async createNotExpired(session: SessionDoc, contentId: string) {}
+
+  //no patch because you can't update createDate, CommentID
+  //no delete because you only delete expiration when you delete comment
+  // i.e. delete is up in the comment sync
 }
 
 /** The web app. */

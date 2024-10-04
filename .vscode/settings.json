@@ -7,5 +7,6 @@
     "source.fixAll": "explicit",
     "source.organizeImports": "explicit"
   },
-  "typescript.preferences.importModuleSpecifier": "project-relative"
+  "typescript.preferences.importModuleSpecifier": "project-relative",
+  "r.lsp.promptToInstall": false
 }
