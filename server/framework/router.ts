@@ -1,4 +1,4 @@
-import express, { Request, Response } from "express";
+import express, { Request, Response, NextFunction } from "express";
 import "reflect-metadata";
 
 import { ZodSchema } from "zod";
@@ -97,8 +97,17 @@ export class Router {
   private makeRoute(f: Function, validator?: ZodSchema) {
     const argNames = getParamNames(f);
 
-    return async (req: Request, res: Response) => {
+    return async (req: Request, res: Response, next: NextFunction) => {
       const reqMap = (name: string) => {
+        if (name === "req") {
+          return req;
+        }
+        if (name === "res") {
+          return res;
+        }
+        if (name === "next") {
+          return next;
+        }
         if (name === "session" || name == "param" || name == "query" || name == "body") {
           return req[name];
         }
@@ -121,7 +130,10 @@ export class Router {
         try {
           args = validator.parse(args);
         } catch (e: unknown) {
-          res.status(400).json({ msg: "Bad Request: validation failed" });
+          // res.status(400).json({ msg: "Bad Request: validation failed" });
+          if (!res.headersSent) {
+            res.status(400).json({ msg: "Bad Request: validation failed" });
+          }
           return;
         }
       }
@@ -132,12 +144,18 @@ export class Router {
         if (result instanceof Promise) {
           result = await result;
         }
+        if (!res.headersSent && result !== undefined) {
+          res.json(result);
+        }
       } catch (e: unknown) {
         const error = (await Router.handleError(e as Error)) as Error & { HTTP_CODE?: number };
-        res.status(error.HTTP_CODE ?? 500).json({ msg: error.message ?? "Internal Server Error" });
+        // res.status(error.HTTP_CODE ?? 500).json({ msg: error.message ?? "Internal Server Error" });
+        if (!res.headersSent) {
+          res.status(error.HTTP_CODE ?? 500).json({ msg: error.message ?? "Internal Server Error" });
+        }
         return;
       }
-      res.json(result);
+      // res.json(result);
     };
   }
 

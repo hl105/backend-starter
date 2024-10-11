@@ -9,6 +9,7 @@ export interface CommentDoc extends BaseDoc {
   text: string;
   lyrics: string;
   image: string;
+  expired?: boolean;  // only when comment is implmeneted as Snapshot
 }
 
 /**
@@ -25,7 +26,7 @@ export default class CommentingConcept {
     this.comments = new DocCollection<CommentDoc>(collectionName);
   }
 
-  async create(post: ObjectId, author: ObjectId, text: string, lyrics: string, image: string) {
+  async create(post: ObjectId, author: ObjectId, text: string, lyrics: string, image: string, expired?: boolean) {
     const _id = await this.comments.createOne({ post, author, text, lyrics, image });
     return { msg: "Comment successfully created!", comment: await this.comments.readOne({ _id }) };
   }
@@ -35,13 +36,37 @@ export default class CommentingConcept {
     return await this.comments.readMany({}, { sort: { _id: -1 } });
   }
 
-  async getByAuthor(author: ObjectId) {
+  async getNotExpiredComments(){
+    const comments = await this.getComments();
+    return this.filterNotExpiredSnapshots(comments); 
+  }
+
+  async getNotExpiredByAuthor(authorId: ObjectId) {
+    const comments = await this.getByAuthor(authorId); 
+    return this.filterNotExpiredSnapshots(comments); 
+  }
+
+  async getCommentById(_id: ObjectId) {
+    const user = await this.comments.readOne({ _id });
+    if (user === null) {
+      throw new NotFoundError(`User not found!`);
+    }
+    return user;
+  }
+
+  async getByAuthor(author: ObjectId, filter?: object) {
     return await this.comments.readMany({ author });
   }
 
   async getByPost(post: ObjectId) {
     return await this.comments.readMany({ post });
   }
+
+  async getByAuthorAndPost(author: ObjectId, post: ObjectId) {
+    return await this.comments.readMany({ author, post });
+  }
+
+
 
   async update(_id: ObjectId, text?: string, lyrics?: string, image?: string) {
     await this.comments.partialUpdateOne({ _id }, { text, lyrics, image });
@@ -68,7 +93,22 @@ export default class CommentingConcept {
     }
   }
 
-  // need assertion to check if friend is author
+  async filterNotExpiredSnapshots(comments: CommentDoc[]) {
+    const now = new Date();
+
+    return comments.filter(comments => {
+      const dateCreated = new Date(comments.dateCreated);
+      const diffHours = Math.abs(now.getTime() - dateCreated.getTime()) / 36e5; 
+
+      if (diffHours > 24) {
+        comments.expired = true; 
+        return false;
+      }
+
+      return true;
+    });
+  }
+  
 }
 
 export class CommentAuthorNotMatchError extends NotAllowedError {

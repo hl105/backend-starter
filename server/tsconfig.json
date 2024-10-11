@@ -1,5 +1,9 @@
 {
   "compilerOptions": {
+    //added
+    "allowJs": true,
+    "checkJs": false,
+    //done
     "target": "ES6",
     "module": "CommonJS",
     "moduleResolution": "Node",

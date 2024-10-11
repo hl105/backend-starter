@@ -8,6 +8,7 @@ type Operation = {
   endpoint: string;
   method: HttpMethod;
   fields: Fields;
+  useFetch?: boolean; // don't use fetch for Spotify Authentication
 };
 
 /**
@@ -21,28 +22,17 @@ const operations: Operation[] = [
     fields: {},
   },
   {
-    name: "Create User",
-    endpoint: "/api/users",
-    method: "POST",
-    fields: { username: "input", password: "input" },
-  },
-  {
-    name: "Login",
-    endpoint: "/api/login",
-    method: "POST",
-    fields: { username: "input", password: "input" },
+    name: "Login with [Spotify]",
+    endpoint: "/api/spotify",
+    method: "GET",
+    fields: {},
+    useFetch: false,
   },
   {
     name: "Logout",
     endpoint: "/api/logout",
     method: "POST",
     fields: {},
-  },
-  {
-    name: "Update Password",
-    endpoint: "/api/users/password",
-    method: "PATCH",
-    fields: { currentPassword: "input", newPassword: "input" },
   },
   {
     name: "Delete User",
@@ -57,58 +47,64 @@ const operations: Operation[] = [
     fields: { username: "input" },
   },
   {
-    name: "Get Posts (empty for all)",
-    endpoint: "/api/posts",
+    name: "Get All Songs User Posted (empty for all)",
+    endpoint: "/api/songs/:username",
     method: "GET",
-    fields: { author: "input" },
+    fields: { username: "input" },
   },
   {
-    name: "Create Post",
-    endpoint: "/api/posts",
+    name: "Save Song Info (i.e. create post)",
+    endpoint: "/api/songs",
     method: "POST",
-    fields: { content: "input" },
+    fields: {},
   },
   {
-    name: "Update Post",
-    endpoint: "/api/posts/:id",
-    method: "PATCH",
-    fields: { id: "input", content: "input", options: { backgroundColor: "input" } },
-  },
-  {
-    name: "Delete Post",
-    endpoint: "/api/posts/:id",
+    name: "Delete Song (i.e. delete post)",
+    endpoint: "/api/songs/:id",
     method: "DELETE",
-    fields: { id: "input" },
+    fields: { _id: "input" },
   },
   {
-    name: "Get Covers (empty for all)",
+    name: "Get Covers by Username, Song (empty for all)",
     endpoint: "/api/covers",
     method: "GET",
-    fields: { author: "input" },
+    fields: { userId: "input", songId: "input" },
+  },
+  {
+    name: "Get Not Locked Covers by Username (empty for all)",
+    endpoint: "/api/covers/notLocked/:username",
+    method: "GET",
+    fields: { username: "input" },
   },
   {
     name: "Create Covers",
     endpoint: "/api/covers",
     method: "POST",
-    fields: { post: "input", text: "input", lyrics: "input", image: "input" },
+    fields: { songId: "input", text: "input", lyrics: "input", image: "input" },
   },
   {
     name: "Update Covers",
-    endpoint: "/api/covers/:id",
+    endpoint: "/api/cover/:coverId",
     method: "PATCH",
-    fields: { id: "input", text: "input", lyrics: "input", image: "input" },
+    fields: { coverId: "input", text: "input", lyrics: "input", image: "input" },
   },
   {
     name: "Delete Covers",
-    endpoint: "/api/covers/:id",
+    endpoint: "/api/covers/:coverId",
     method: "DELETE",
-    fields: { id: "input" },
+    fields: { coverId: "input" },
   },
   {
-    name: "Get Snapshots (empty for all)",
-    endpoint: "/api/snapshots",
+    name: "Get All Snapshots by Username (empty for all)",
+    endpoint: "/api/snapshots/all/:username",
     method: "GET",
-    fields: { author: "input" },
+    fields: { username: "input" },
+  },
+  {
+    name: "Get Unexpired Snapshots by Username (empty for all)",
+    endpoint: "/api/snapshots/notExpired/:username",
+    method: "GET",
+    fields: { username: "input" },
   },
   {
     name: "Create Snapshots",
@@ -117,20 +113,14 @@ const operations: Operation[] = [
     fields: { post: "input", text: "input", lyrics: "input", image: "input" },
   },
   {
-    name: "Update Snapshots",
-    endpoint: "/api/snapshots/:id",
-    method: "PATCH",
-    fields: { id: "input", text: "input", lyrics: "input", image: "input" },
-  },
-  {
     name: "Delete Snapshots",
-    endpoint: "/api/snapshots/:id",
+    endpoint: "/api/snapshots/:snapshotId",
     method: "DELETE",
-    fields: { id: "input" },
+    fields: { snapshotId: "input" },
   },
   {
     name: "Get Locks (empty for all)",
-    endpoint: "/api/locks",
+    endpoint: "/api/locks/:locker",
     method: "GET",
     fields: { locker: "input" },
   },
@@ -138,13 +128,61 @@ const operations: Operation[] = [
     name: "Create Locks",
     endpoint: "/api/locks",
     method: "POST",
-    fields: { comment: "input", from: "input", to: "input" },
+    fields: { cover: "input", from: "input", to: "input" },
   },
   {
-    name: "Update Locks",
+    name: "Get Friends",
+    endpoint: "/api/friends",
+    method: "GET",
+    fields: {},
+  },
+  {
+    name: "Delete Friend",
+    endpoint: "/api/friends/:friend",
+    method: "DELETE",
+    fields: { friend_username: "input" },
+  },
+  {
+    name: "Get Friend Request",
+    endpoint: "/api/friend/requests",
+    method: "GET",
+    fields: {},
+  },
+  {
+    name: "Send Friend Request",
+    endpoint: "/api/friend/requests/:to_username",
+    method: "POST",
+    fields: { to_username: "input" },
+  },
+  {
+    name: "[NOT USED] Update Locks",
     endpoint: "/api/locks/:id",
     method: "PATCH",
     fields: { id: "input" },
+  },
+  {
+    name: "[NOT USED] Create User",
+    endpoint: "/api/users",
+    method: "POST",
+    fields: { username: "input", password: "input" },
+  },
+  {
+    name: "[NOT USED] Login",
+    endpoint: "/api/login",
+    method: "POST",
+    fields: { username: "input", password: "input" },
+  },
+  {
+    name: "[NOT USED] Update Post",
+    endpoint: "/api/songs/:id",
+    method: "PATCH",
+    fields: { id: "input", content: "input", options: { backgroundColor: "input" } },
+  },
+  {
+    name: "[NOT USED] Update Password",
+    endpoint: "/api/users/password",
+    method: "PATCH",
+    fields: { currentPassword: "input", newPassword: "input" },
   },
 ];
 
@@ -170,7 +208,7 @@ async function request(method: HttpMethod, endpoint: string, params?: unknown) {
       headers: {
         "Content-Type": "application/json",
       },
-      credentials: "same-origin",
+      credentials: "include", // "same-origin"
       body: params ? JSON.stringify(params) : undefined,
     });
 
@@ -248,6 +286,13 @@ async function submitEventHandler(e: Event) {
   });
 
   const op = operations.find((op) => op.endpoint === $endpoint && op.method === $method);
+
+  // for Spotify authentication
+  if (op && op.useFetch === false) {
+    window.location.href = endpoint;
+    return;
+  }
+
   const pairs = Object.entries(reqData);
   for (const [key, val] of pairs) {
     if (val === "") {
@@ -256,6 +301,15 @@ async function submitEventHandler(e: Event) {
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const type = key.split(".").reduce((obj, key) => obj[key], op?.fields as any);
+
+    if (key === "from" || key === "to") {
+      reqData[key] = new Date(val as string).toISOString(); // Converts string to Date object
+      if (isNaN(Date.parse(val as string))) {
+        updateResponse("400", `Invalid date format for '${key}'`);
+        return;
+      }
+    }
+
     if (type === "json") {
       reqData[key] = JSON.parse(val as string);
     }
@@ -271,4 +325,16 @@ async function submitEventHandler(e: Event) {
 document.addEventListener("DOMContentLoaded", () => {
   document.querySelector("#operations-list")!.innerHTML = getHtmlOperations().join("");
   document.querySelectorAll(".operation-form").forEach((form) => form.addEventListener("submit", submitEventHandler));
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const error = urlParams.get("error");
+  const success = urlParams.get("success");
+
+  if (error) {
+    updateResponse("Error", decodeURIComponent(error));
+    window.history.replaceState({}, document.title, window.location.pathname);
+  } else if (success) {
+    updateResponse("Success", decodeURIComponent(success));
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
 });

@@ -1,16 +1,19 @@
 import { ObjectId } from "mongodb";
 import DocCollection, { BaseDoc } from "../framework/doc";
 import { BadValuesError, NotAllowedError, NotFoundError } from "./errors";
+import axios from 'axios';
 
 export interface UserDoc extends BaseDoc {
   username: string;
   password: string;
-  // spotifyId: string;
-  // accessToken: string;
-  // refreshToken: string;
+  spotifyId: string;
+  accessToken: string;
+  refreshToken: string;
+  displayName: string;
+  profileUrl: string | null;
 }
 
-/**
+/**j
  * concept: Authenticating
  */
 export default class AuthenticatingConcept {
@@ -24,6 +27,47 @@ export default class AuthenticatingConcept {
 
     // Create index on username to make search queries for it performant
     void this.users.collection.createIndex({ username: 1 });
+  }
+
+  /**
+   * Spotify Login
+   */
+  async loginBySpotifyId(params: { spotifyId: string; accessToken: string; refreshToken: string; displayName: string; profileUrl: string | null }) {
+    console.log("logging user by spotify id");
+    const spotifyId = params.spotifyId;
+    if (!spotifyId) {
+      throw new BadValuesError("SpotifyId must be non-empty!");
+    }
+    const user = await this.users.readOne({ spotifyId });
+    if (!user) {
+      const _id = await this.users.createOne({
+        spotifyId: params.spotifyId,
+        username: params.displayName,
+        password: "",
+        accessToken: params.accessToken,
+        refreshToken: params.refreshToken,
+        profileUrl: params.profileUrl,
+      });
+      return await this.users.readOne({ _id });
+    }
+    this.updateSpotifyAccessToken(user._id, params.refreshToken);
+    return user;
+  }
+
+  async findUserBySpotifyId(spotifyId: string) {
+    const user = await this.users.readOne({ spotifyId });
+    if (user === null) {
+      throw new NotFoundError(`User not found!`);
+    }
+    return this.redactPassword(user);
+  }
+
+  async findUserIdBySpotifyId(spotifyId: string) {
+    const user = await this.users.readOne({ spotifyId });
+    if (user === null) {
+      throw new NotFoundError(`User not found!`);
+    }
+    return user._id;
   }
 
   async create(username: string, password: string) {
@@ -83,6 +127,34 @@ export default class AuthenticatingConcept {
     return { msg: "Username updated successfully!" };
   }
 
+  async updateSpotifyAccessToken(_id: ObjectId, refreshToken: string) {
+      const clientId = process.env.SPOTIFY_CLIENT_ID; 
+      const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;  
+      const encodedCredentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');  
+
+      try {
+          const response = await axios.post('https://accounts.spotify.com/api/token', new URLSearchParams({
+              grant_type: 'refresh_token',
+              refresh_token: refreshToken,
+          }), {
+              headers: {
+                  'Authorization': `Basic ${encodedCredentials}`, 
+                  'Content-Type': 'application/x-www-form-urlencoded',
+              }
+          });
+          const newAccessToken = response.data.access_token;
+
+          await this.users.partialUpdateOne({ _id }, { accessToken: newAccessToken });
+
+          return { msg: "AccessToken updated successfully!", accessToken: newAccessToken };
+
+      } catch (error: any) {
+          console.error('Error refreshing Spotify access token:', error.response?.data || error.message);
+          throw new Error('Failed to refresh Spotify access token.');
+      }
+  }
+
+
   async updatePassword(_id: ObjectId, currentPassword: string, newPassword: string) {
     const user = await this.users.readOne({ _id });
     if (!user) {
@@ -120,4 +192,10 @@ export default class AuthenticatingConcept {
       throw new NotAllowedError(`User with username ${username} already exists!`);
     }
   }
+
+  // private async assertSpotifyIdUnique(spotifyId: string) {
+  //   if (await this.users.readOne({ spotifyId })) {
+  //     throw new NotAllowedError(`User with spotifyId ${spotifyId} already exists!`);
+  //   }
+  // }
 }

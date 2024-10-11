@@ -12,6 +12,9 @@ import MongoStore from "connect-mongo";
 import { connectDb } from "../server/db";
 import { appRouter } from "../server/routes";
 
+//spotify
+import passport from "../server/spotifyStrategy";
+
 export const app = express();
 const PORT = process.env.PORT || 3000;
 app.use(logger("dev"));
@@ -25,7 +28,7 @@ app.use(express.urlencoded({ extended: false })); // Also enable URL encoded req
 app.use(
   session({
     secret: process.env.SECRET || "Hello 6.1040",
-    resave: true,
+    resave: false,
     saveUninitialized: false,
     store: MongoStore.create({
       mongoUrl: process.env.MONGO_SRV,
@@ -33,6 +36,9 @@ app.use(
     }),
   }),
 );
+
+app.use(passport.initialize());
+app.use(passport.session());
 
 app.use(express.static(path.join(__dirname, "../public")));
 app.use("/api/", appRouter);
