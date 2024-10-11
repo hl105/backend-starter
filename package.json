@@ -19,6 +19,7 @@
     "@types/passport-spotify": "^2.0.4",
     "@typescript-eslint/eslint-plugin": "^8.5.0",
     "@typescript-eslint/parser": "^8.5.0",
+    "@vue/cli-service": "^5.0.8",
     "concurrently": "^8.2.1",
     "copyfiles": "^2.4.1",
     "eslint": "^9.10.0",
